@@ -1,3 +1,4 @@
+
 import streamlit as st
 import requests
 import time
@@ -63,10 +64,10 @@ st.title("🧠 AI Project Risk Analyzer")
 # -------------------------------
 # API KEY
 # -------------------------------
-API_KEY = "ed9d428902504be4858a8711675b30d7"
+API_KEY = "YOUR_API_KEY"
 
 # -------------------------------
-# FETCH NEWS (FIXED)
+# FETCH NEWS
 # -------------------------------
 def fetch_market_news():
     timestamp = int(time.time())
@@ -98,9 +99,6 @@ def fetch_market_news():
 if "news" not in st.session_state:
     st.session_state.news = fetch_market_news()
 
-if "run_analysis" not in st.session_state:
-    st.session_state.run_analysis = False
-
 # -------------------------------
 # PROJECT INPUT
 # -------------------------------
@@ -113,6 +111,7 @@ col1, col2 = st.columns(2)
 with col1:
     project_id = st.text_input("Project ID", "1")
     deadline = st.date_input("Deadline")
+    topics = st.multiselect("Project Topics", ["AI", "Cloud", "Security", "IoT", "Electronics"], default=["AI", "Cloud"])
 
 with col2:
     completion_date = st.date_input("Completion Date")
@@ -142,17 +141,15 @@ st.markdown('</div>', unsafe_allow_html=True)
 # -------------------------------
 analyze_clicked = st.button("🚀 Analyze Risk")
 
+# -------------------------------
+# OUTPUT
+# -------------------------------
 if analyze_clicked:
-    st.session_state.run_analysis = True
-
-# -------------------------------
-# OUTPUT SECTION
-# -------------------------------
-if st.session_state.get("run_analysis", False):
 
     with st.spinner("Running AI Agents..."):
 
         try:
+            # Prepare data
             project_data = {
                 "project_id": project_id,
                 "deadline": str(deadline),
@@ -163,20 +160,32 @@ if st.session_state.get("run_analysis", False):
 
             market_news = st.session_state.news[:2]
 
-            # AGENTS
+            # ---------------------------
+            # AGENT PIPELINE
+            # ---------------------------
             project_result = project_agent.analyze(project_data)
             market_result = market_agent.analyze(market_news)
             final_result = risk_agent.analyze(project_result, market_result)
 
-            # 🔥 REPORT FIX (IMPORTANT)
             report = reporting_agent.generate_report(project_data, final_result)
 
+            # ---------------------------
+            # FIXED DATA MAPPING
+            # ---------------------------
             risk_level = final_result.get("risk_level", "UNKNOWN")
-            risk_score = int(final_result.get("risk_score", 0))
+
+            risk_score = float(final_result.get("final_risk_score", 0)) * 100
+            risk_score = int(risk_score)
+
             key_factors = final_result.get("key_factors", [])
             justification = final_result.get("justification", "")
 
-            delay = max((completion_date - deadline).days, 0)
+            # Safe delay calculation
+            if deadline and completion_date:
+                delay = max((completion_date - deadline).days, 0)
+            else:
+                delay = 0
+
             budget_ratio = budget_used / budget_allocated if budget_allocated > 0 else 0
 
             # ---------------------------
@@ -205,7 +214,7 @@ if st.session_state.get("run_analysis", False):
                 st.markdown('</div>', unsafe_allow_html=True)
 
             # ---------------------------
-            # AI REPORT (IMPROVED)
+            # REPORT SECTION
             # ---------------------------
             st.markdown('<div class="card">', unsafe_allow_html=True)
 
@@ -214,30 +223,17 @@ if st.session_state.get("run_analysis", False):
             st.markdown(f"<h2 style='color:{color};'>🚨 Risk Level: {risk_level}</h2>", unsafe_allow_html=True)
             st.markdown(f"### Risk Score: {risk_score}/100")
 
-            st.markdown("### 📝 AI Generated Report")
+            st.subheader("📝 AI Generated Report")
+            st.write(report)
 
-            if report:
-                st.markdown(f"""
-                <div style="
-                    background: rgba(255,255,255,0.08);
-                    padding: 15px;
-                    border-radius: 10px;
-                    line-height: 1.6;
-                ">
-                {report}
-                </div>
-                """, unsafe_allow_html=True)
-            else:
-                st.warning("⚠️ Report not generated")
-
-            st.markdown("### 🔑 Key Factors")
+            st.subheader("🔑 Key Factors")
             for f in key_factors:
-                st.markdown(f"✔️ {f.replace('_',' ').title()}")
+                st.write(f"✔️ {f.replace('_',' ').title()}")
 
-            st.markdown("### 📊 Analysis")
+            st.subheader("📊 Analysis")
             st.info(justification)
 
-            st.markdown("### 💡 Recommendations")
+            st.subheader("💡 Recommendations")
 
             if "budget" in str(key_factors):
                 st.write("✔️ Optimize project budget and reduce overspending.")
